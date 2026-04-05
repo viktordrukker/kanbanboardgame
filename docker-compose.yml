@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kbg-postgres
+    environment:
+      POSTGRES_USER: kanban
+      POSTGRES_PASSWORD: kanban
+      POSTGRES_DB: kanban_game
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kanban -d kanban_game"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ./kanban-game
+      dockerfile: Dockerfile
+    container_name: kbg-app
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://kanban:kanban@postgres:5432/kanban_game
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production-use-32-chars}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./kanban-game
+      dockerfile: Dockerfile
+    container_name: kbg-migrate
+    command: >
+      sh -c "npx prisma migrate deploy"
+    environment:
+      DATABASE_URL: postgresql://kanban:kanban@postgres:5432/kanban_game
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    profiles:
+      - migrate
+
+volumes:
+  postgres_data:

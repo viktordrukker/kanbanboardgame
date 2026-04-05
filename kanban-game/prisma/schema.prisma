@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  tier         String   @default("free")
+  createdAt    DateTime @default(now())
+  games        Game[]
+}
+
+model Game {
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scenarioId String
+  name       String?
+  currentDay Int            @default(1)
+  status     String         @default("active")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  snapshots  GameSnapshot[]
+}
+
+model GameSnapshot {
+  id         String   @id @default(cuid())
+  gameId     String
+  game       Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  day        Int
+  boardState Json
+  createdAt  DateTime @default(now())
+
+  @@unique([gameId, day])
+}
